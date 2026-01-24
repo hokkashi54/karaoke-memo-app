@@ -14,13 +14,13 @@ const getPitchValue = (pitchStr) => {
   if (!pitchStr) return -999;
   const match = pitchStr.match(/^(low|mid1|mid2|hi|hihi)([A-G]#?)$/);
   if (!match) return -999;
-  
+   
   const range = match[1];
   const note = match[2];
-  
+   
   const rangeIndex = RANGES.indexOf(range);
   const noteIndex = NOTES.indexOf(note);
-  
+   
   if (noteIndex === -1) return -999;
 
   return (rangeIndex * 12) + noteIndex;
@@ -211,7 +211,7 @@ const PlaylistCard = ({ playlist, songCount, onClick, onEdit, onDelete }) => {
             className="bg-slate-800 rounded-lg p-4 border border-slate-700 shadow-sm hover:border-slate-500 transition-colors cursor-pointer group relative overflow-hidden"
         >
             <div className="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-blue-500/10 to-purple-500/10 rounded-bl-full pointer-events-none"></div>
-            
+             
             <div className="flex justify-between items-start mb-2">
                 <div className="flex items-center gap-3">
                     <div className="bg-slate-700 p-3 rounded-lg text-blue-400 group-hover:text-blue-300 transition-colors">
@@ -223,7 +223,7 @@ const PlaylistCard = ({ playlist, songCount, onClick, onEdit, onDelete }) => {
                     </div>
                 </div>
             </div>
-            
+             
             <div className="flex justify-end gap-2 mt-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                  <button 
                     onClick={(e) => { e.stopPropagation(); onEdit(playlist); }}
@@ -306,7 +306,7 @@ const PlaylistModal = ({ isOpen, onClose, playlist, allSongs, onSave }) => {
                             onChange={e => setSearchQ(e.target.value)}
                         />
                     </div>
-                    
+                     
                     <div className="flex-1 overflow-y-auto bg-slate-900/30 rounded-lg border border-slate-700 p-2 space-y-1">
                         {filteredSongs.length > 0 ? filteredSongs.map(song => {
                             const isSelected = selectedSongIds.has(song.id);
@@ -378,7 +378,7 @@ const BulkAddModal = ({ isOpen, onClose, onAddSongs, existingSongs }) => {
     setIsLoading(true);
     setError(null);
     setSelectedIds(new Set());
-    
+     
     try {
       const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=50&country=JP&lang=ja_jp`);
       if (!res.ok) throw new Error('Network response was not ok');
@@ -632,8 +632,12 @@ export default function App() {
   // --- Effects ---
   useEffect(() => {
     // スマホでの「引っ張って更新」を防止
+    // document.bodyだけでなく、document.documentElement（htmlタグ）にも適用することでより確実に防ぐ
+    document.documentElement.style.overscrollBehaviorY = 'none';
     document.body.style.overscrollBehaviorY = 'none';
+
     return () => {
+      document.documentElement.style.overscrollBehaviorY = 'auto';
       document.body.style.overscrollBehaviorY = 'auto';
     };
   }, []);
@@ -675,7 +679,7 @@ export default function App() {
   // Edit Targets
   const [currentSong, setCurrentSong] = useState(null);
   const [currentPlaylist, setCurrentPlaylist] = useState(null);
-  
+   
   const [formData, setFormData] = useState({
     title: '', artist: '', key: 0, chestHigh: '', falsettoHigh: '', tags: '', memo: '',
     durationM: '', durationS: '' // 分・秒の入力用State
@@ -800,7 +804,7 @@ export default function App() {
 
   const handleSaveSong = () => {
     if (!formData.title) return alert('曲名は必須です');
-    
+     
     // Duration Calculation
     let duration = 0;
     const m = parseInt(formData.durationM);
@@ -873,7 +877,7 @@ export default function App() {
             skippedCount++;
         }
     });
-    
+     
     if (newSongs.length > 0) setSongs(prev => [...newSongs, ...prev]);
     if (skippedCount > 0) alert(`${skippedCount}曲は既に登録済みのためスキップされました。`);
   };
@@ -920,7 +924,7 @@ export default function App() {
   // --- Render Contents ---
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-24 flex flex-col">
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-24 flex flex-col overscroll-none">
       {/* Header */}
       <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10 safe-area-pt shadow-md">
         <div className="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
@@ -1007,7 +1011,7 @@ export default function App() {
                     <SlidersHorizontal size={18} />
                 </button>
             </div>
-            
+             
             <div className="flex justify-between items-center">
                 <span className="text-xs text-slate-400 font-medium flex items-center gap-2">
                     {viewingPlaylist ? playlistSongs.length : sortedSongs.length} 曲
@@ -1023,7 +1027,7 @@ export default function App() {
                     <Filter size={12} />
                     {getSortLabel()}
                 </button>
-                
+                 
                 {isSortMenuOpen && (
                     <>
                     <div className="fixed inset-0 z-10" onClick={() => setIsSortMenuOpen(false)}></div>
