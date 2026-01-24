@@ -3,17 +3,27 @@ import { Plus, Search, Mic, Music, Trash2, Edit2, X, ChevronDown, ChevronUp, Sav
 
 // --- 定数・ヘルパー関数 ---
 
+// 音域のプレフィックス定義（低い順）
 const RANGES = ['low', 'mid1', 'mid2', 'hi', 'hihi'];
-const NOTES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
+// 音階の定義（修正：ユーザー要望により A(低) -> G(高) の順序に変更）
+const NOTES = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
+
+// 音高を数値化する関数（ソート用）
 const getPitchValue = (pitchStr) => {
   if (!pitchStr) return -999;
   const match = pitchStr.match(/^(low|mid1|mid2|hi|hihi)([A-G]#?)$/);
   if (!match) return -999;
+  
   const range = match[1];
   const note = match[2];
+  
   const rangeIndex = RANGES.indexOf(range);
   const noteIndex = NOTES.indexOf(note);
+  
+  // マッチしたがNOTESに含まれない場合（ありえないはずだが安全策）
+  if (noteIndex === -1) return -999;
+
   return (rangeIndex * 12) + noteIndex;
 };
 
@@ -29,8 +39,9 @@ const formatDuration = (seconds) => {
 // --- コンポーネント ---
 
 const PitchSelector = ({ label, value, onChange, placeholder = "- 未設定 -" }) => {
+  // 初期値のデフォルトも範囲内のものにしておく
   const [lastRange, setLastRange] = useState('mid2');
-  const [lastNote, setLastNote] = useState('C');
+  const [lastNote, setLastNote] = useState('A'); // A始まりに変更
 
   useEffect(() => {
     if (value) {
