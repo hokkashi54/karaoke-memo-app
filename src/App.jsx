@@ -942,10 +942,21 @@ export default function App() {
                     </div>
                 </div>
             ) : (
-                <div className="flex items-center gap-2 select-none" onClick={() => {setSearchQuery(''); setSortConfig({key:'createdAt', direction:'desc'})}}>
-                    <div className="bg-gradient-to-tr from-blue-500 to-purple-500 p-2 rounded-lg shadow-lg shadow-blue-500/20">
-                    <Music className="text-white" size={20} />
+                <div className="flex items-center gap-3 select-none" onClick={() => {setSearchQuery(''); setSortConfig({key:'createdAt', direction:'desc'})}}>
+                    <img 
+                      src="icon.jpg" 
+                      alt="App Icon" 
+                      className="w-10 h-10 rounded-lg shadow-lg shadow-blue-500/20 object-cover border border-slate-700 bg-slate-800"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                        e.target.nextSibling.style.display = 'flex';
+                      }}
+                    />
+                    {/* 画像読み込みエラー時のフォールバック (元のアイコン) */}
+                    <div className="hidden bg-gradient-to-tr from-blue-500 to-purple-500 p-2 rounded-lg shadow-lg shadow-blue-500/20">
+                        <Music className="text-white" size={20} />
                     </div>
+                    
                     <h1 className="text-xl font-bold tracking-tight cursor-pointer">Karaoke<span className="text-blue-400">Log</span></h1>
                 </div>
             )}
