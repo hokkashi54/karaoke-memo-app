@@ -6,7 +6,7 @@ import { Plus, Search, Mic, Music, Trash2, Edit2, X, ChevronDown, ChevronUp, Sav
 // 音域のプレフィックス定義（低い順）
 const RANGES = ['low', 'mid1', 'mid2', 'hi', 'hihi'];
 
-// 音階の定義（修正：ユーザー要望により A(低) -> G(高) の順序に変更）
+// 音階の定義（A(低) -> G(高) の順序）
 const NOTES = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'];
 
 // 音高を数値化する関数（ソート用）
@@ -21,7 +21,6 @@ const getPitchValue = (pitchStr) => {
   const rangeIndex = RANGES.indexOf(range);
   const noteIndex = NOTES.indexOf(note);
   
-  // マッチしたがNOTESに含まれない場合（ありえないはずだが安全策）
   if (noteIndex === -1) return -999;
 
   return (rangeIndex * 12) + noteIndex;
@@ -39,9 +38,8 @@ const formatDuration = (seconds) => {
 // --- コンポーネント ---
 
 const PitchSelector = ({ label, value, onChange, placeholder = "- 未設定 -" }) => {
-  // 初期値のデフォルトも範囲内のものにしておく
   const [lastRange, setLastRange] = useState('mid2');
-  const [lastNote, setLastNote] = useState('A'); // A始まりに変更
+  const [lastNote, setLastNote] = useState('A');
 
   useEffect(() => {
     if (value) {
@@ -631,6 +629,15 @@ const FilterModal = ({ isOpen, onClose, filters, setFilters }) => {
 // --- Main App ---
 
 export default function App() {
+  // --- Effects ---
+  useEffect(() => {
+    // スマホでの「引っ張って更新」を防止
+    document.body.style.overscrollBehaviorY = 'none';
+    return () => {
+      document.body.style.overscrollBehaviorY = 'auto';
+    };
+  }, []);
+
   // --- State ---
   const [songs, setSongs] = useState(() => {
     try {
