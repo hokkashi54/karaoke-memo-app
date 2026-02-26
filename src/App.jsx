@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Plus, Search, Mic, Music, Trash2, Edit2, X, ChevronDown, ChevronUp, Save, Filter, Mic2, RotateCcw, ListPlus, Loader2, Check, AlertCircle, ListMusic, ArrowLeft, CheckSquare, Square, Library, SlidersHorizontal, Clock, ArrowDownToLine, ArrowUpToLine } from 'lucide-react';
+import { Plus, Search, Mic, Music, Trash2, Edit2, X, ChevronDown, ChevronUp, Save, Filter, Mic2, RotateCcw, ListPlus, Loader2, Check, AlertCircle, ListMusic, ArrowLeft, CheckSquare, Square, Library, SlidersHorizontal, Clock, ArrowDownToLine, ArrowUpToLine, LayoutGrid, List } from 'lucide-react';
 
 // --- 定数・ヘルパー関数 ---
 
@@ -772,6 +772,20 @@ export default function App() {
   const [currentSong, setCurrentSong] = useState(null);
   const [currentPlaylist, setCurrentPlaylist] = useState(null);
 
+  // Display Mode Settings
+  const [isCompactMode, setIsCompactMode] = useState(() => {
+    try {
+      const saved = localStorage.getItem('karaoke-compact-mode');
+      return saved ? JSON.parse(saved) : true; // Default to true on small screens typically, but let's user decide (true = compact)
+    } catch (e) {
+      return false;
+    }
+  });
+
+  // Scroll State for Auto-hide Search Bar
+  const [isSearchHidden, setIsSearchHidden] = useState(false);
+  const [lastScrollY, setLastScrollY] = useState(0);
+
   const [formData, setFormData] = useState({
     title: '', artist: '', key: 0, chestHigh: '', falsettoHigh: '', tags: '', memo: '',
     durationM: '', durationS: '' // 分・秒の入力用State
@@ -790,6 +804,27 @@ export default function App() {
     localStorage.setItem('karaoke-playlists-v1', JSON.stringify(playlists));
   }, [playlists]);
 
+  useEffect(() => {
+    localStorage.setItem('karaoke-compact-mode', JSON.stringify(isCompactMode));
+  }, [isCompactMode]);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+
+      if (currentScrollY > 60 && currentScrollY > lastScrollY) {
+        setIsSearchHidden(true); // Scrolling down
+      } else if (currentScrollY < lastScrollY) {
+        setIsSearchHidden(false); // Scrolling up
+      }
+
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
+
   // --- Helper Functions ---
   const getSortedSongs = (sourceSongs) => {
     let result = [...sourceSongs];
@@ -797,11 +832,15 @@ export default function App() {
     // 1. Text Search
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      result = result.filter(s =>
-        s.title.toLowerCase().includes(q) ||
-        s.artist.toLowerCase().includes(q) ||
-        s.tags.toLowerCase().includes(q)
-      );
+      if (searchQuery === 'タグ無し' || searchQuery === 'タグなし') {
+        result = result.filter(s => !s.tags || s.tags.trim() === '');
+      } else {
+        result = result.filter(s =>
+          s.title.toLowerCase().includes(q) ||
+          (s.artist && s.artist.toLowerCase().includes(q)) ||
+          (s.tags && s.tags.toLowerCase().includes(q))
+        );
+      }
     }
 
     // 2. Range Filter (Pitch)
@@ -1124,88 +1163,104 @@ export default function App() {
           </div>
         </div>
 
-        {/* Search & Sort Bar */}
-        {(activeTab === 'songs' || viewingPlaylist) && (
-          <div className="max-w-3xl mx-auto px-4 pb-4 space-y-3">
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                <input
-                  type="text"
-                  placeholder={viewingPlaylist ? `${viewingPlaylist.title}内を検索...` : "リスト内を検索..."}
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none placeholder-slate-500 transition-colors focus:bg-slate-800"
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
-                    <X size={14} />
+        {/* Search & Sort Bar Wrapper */}
+        <div
+          className={`grid transition-[grid-template-rows,opacity,margin,padding] duration-300 ease-in-out ${isSearchHidden && (activeTab === 'songs' || viewingPlaylist)
+              ? 'grid-rows-[0fr] opacity-0 pointer-events-none'
+              : 'grid-rows-[1fr] opacity-100'
+            }`}
+        >
+          <div className="overflow-hidden">
+            {(activeTab === 'songs' || viewingPlaylist) && (
+              <div className="max-w-3xl mx-auto px-4 pb-4 space-y-3">
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <input
+                      type="text"
+                      placeholder={viewingPlaylist ? `${viewingPlaylist.title}内を検索...` : "リスト内を検索..."}
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none placeholder-slate-500 transition-colors focus:bg-slate-800"
+                    />
+                    {searchQuery && (
+                      <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white">
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setIsCompactMode(!isCompactMode)}
+                    className="px-3 rounded-lg border bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700 flex items-center justify-center transition"
+                    title={isCompactMode ? "通常表示にする" : "コンパクト表示にする"}
+                  >
+                    {isCompactMode ? <LayoutGrid size={18} /> : <List size={18} />}
                   </button>
-                )}
-              </div>
-              <button
-                onClick={() => setIsFilterModalOpen(true)}
-                className={`px-3 rounded-lg border flex items-center justify-center transition ${hasActiveFilters ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
-                title="絞り込み"
-              >
-                <SlidersHorizontal size={18} />
-              </button>
-            </div>
+                  <button
+                    onClick={() => setIsFilterModalOpen(true)}
+                    className={`px-3 rounded-lg border flex items-center justify-center transition ${hasActiveFilters ? 'bg-blue-600 border-blue-600 text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-700'}`}
+                    title="絞り込み"
+                  >
+                    <SlidersHorizontal size={18} />
+                  </button>
+                </div>
 
-            <div className="flex justify-between items-center">
-              <span className="text-xs text-slate-400 font-medium flex items-center gap-2">
-                {viewingPlaylist ? playlistSongs.length : sortedSongs.length} 曲
-                {hasActiveFilters && (
-                  <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-[10px] border border-blue-500/30">絞り込み中</span>
-                )}
-              </span>
-              <div className="relative">
-                <button
-                  onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
-                  className="flex items-center gap-2 text-xs font-medium bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-full transition border border-slate-600"
-                >
-                  <Filter size={12} />
-                  {getSortLabel()}
-                </button>
+                <div className="flex justify-between items-center">
+                  <span className="text-xs text-slate-400 font-medium flex items-center gap-2">
+                    {viewingPlaylist ? playlistSongs.length : sortedSongs.length} 曲
+                    {hasActiveFilters && (
+                      <span className="bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded text-[10px] border border-blue-500/30">絞り込み中</span>
+                    )}
+                  </span>
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsSortMenuOpen(!isSortMenuOpen)}
+                      className="flex items-center gap-2 text-xs font-medium bg-slate-700 hover:bg-slate-600 px-3 py-1.5 rounded-full transition border border-slate-600"
+                    >
+                      <Filter size={12} />
+                      {getSortLabel()}
+                    </button>
 
-                {isSortMenuOpen && (
-                  <>
-                    <div className="fixed inset-0 z-10" onClick={() => setIsSortMenuOpen(false)}></div>
-                    <div className="absolute right-0 top-full mt-2 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
-                      <div className="py-1">
-                        <button onClick={() => handleSort('createdAt')} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-700 flex justify-between items-center group">
-                          <span>登録順</span>
-                          {sortConfig.key === 'createdAt' && <span className="text-blue-400 text-xs">{sortConfig.direction === 'desc' ? '新しい順' : '古い順'}</span>}
-                        </button>
-                        <button onClick={() => handleSort('title')} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-700 flex justify-between items-center">
-                          <span>曲名順</span>
-                          {sortConfig.key === 'title' && <span className="text-blue-400 text-xs">{sortConfig.direction === 'desc' ? '降順' : '昇順'}</span>}
-                        </button>
-                        <button onClick={() => handleSort('artist')} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-700 flex justify-between items-center">
-                          <span>歌手順</span>
-                          {sortConfig.key === 'artist' && <span className="text-blue-400 text-xs">{sortConfig.direction === 'desc' ? '降順' : '昇順'}</span>}
-                        </button>
-                        <button onClick={() => handleSort('duration')} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-700 flex justify-between items-center">
-                          <span>曲の長さ</span>
-                          <span className="text-xs bg-slate-700 px-1.5 py-0.5 rounded text-blue-300">{sortConfig.key === 'duration' && (sortConfig.direction === 'desc' ? '長い順' : '短い順')}</span>
-                        </button>
-                        <div className="h-px bg-slate-700 my-1"></div>
-                        <button onClick={() => handleSort('chestHigh')} className="w-full text-left px-4 py-2.5 text-sm text-green-400 hover:bg-slate-700 flex justify-between items-center">
-                          <span>地声最高音</span>
-                          <span className="text-xs bg-green-400/10 px-1.5 py-0.5 rounded">{sortConfig.key === 'chestHigh' && (sortConfig.direction === 'desc' ? '高い順' : '低い順')}</span>
-                        </button>
-                        <button onClick={() => handleSort('falsettoHigh')} className="w-full text-left px-4 py-2.5 text-sm text-purple-400 hover:bg-slate-700 flex justify-between items-center">
-                          <span>裏声最高音</span>
-                          <span className="text-xs bg-purple-400/10 px-1.5 py-0.5 rounded">{sortConfig.key === 'falsettoHigh' && (sortConfig.direction === 'desc' ? '高い順' : '低い順')}</span>
-                        </button>
-                      </div>
-                    </div>
-                  </>
-                )}
+                    {isSortMenuOpen && (
+                      <>
+                        <div className="fixed inset-0 z-10" onClick={() => setIsSortMenuOpen(false)}></div>
+                        <div className="absolute right-0 top-full mt-2 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-20 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                          <div className="py-1">
+                            <button onClick={() => handleSort('createdAt')} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-700 flex justify-between items-center group">
+                              <span>登録順</span>
+                              {sortConfig.key === 'createdAt' && <span className="text-blue-400 text-xs">{sortConfig.direction === 'desc' ? '新しい順' : '古い順'}</span>}
+                            </button>
+                            <button onClick={() => handleSort('title')} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-700 flex justify-between items-center">
+                              <span>曲名順</span>
+                              {sortConfig.key === 'title' && <span className="text-blue-400 text-xs">{sortConfig.direction === 'desc' ? '降順' : '昇順'}</span>}
+                            </button>
+                            <button onClick={() => handleSort('artist')} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-700 flex justify-between items-center">
+                              <span>歌手順</span>
+                              {sortConfig.key === 'artist' && <span className="text-blue-400 text-xs">{sortConfig.direction === 'desc' ? '降順' : '昇順'}</span>}
+                            </button>
+                            <button onClick={() => handleSort('duration')} className="w-full text-left px-4 py-2.5 text-sm hover:bg-slate-700 flex justify-between items-center">
+                              <span>曲の長さ</span>
+                              <span className="text-xs bg-slate-700 px-1.5 py-0.5 rounded text-blue-300">{sortConfig.key === 'duration' && (sortConfig.direction === 'desc' ? '長い順' : '短い順')}</span>
+                            </button>
+                            <div className="h-px bg-slate-700 my-1"></div>
+                            <button onClick={() => handleSort('chestHigh')} className="w-full text-left px-4 py-2.5 text-sm text-green-400 hover:bg-slate-700 flex justify-between items-center">
+                              <span>地声最高音</span>
+                              <span className="text-xs bg-green-400/10 px-1.5 py-0.5 rounded">{sortConfig.key === 'chestHigh' && (sortConfig.direction === 'desc' ? '高い順' : '低い順')}</span>
+                            </button>
+                            <button onClick={() => handleSort('falsettoHigh')} className="w-full text-left px-4 py-2.5 text-sm text-purple-400 hover:bg-slate-700 flex justify-between items-center">
+                              <span>裏声最高音</span>
+                              <span className="text-xs bg-purple-400/10 px-1.5 py-0.5 rounded">{sortConfig.key === 'falsettoHigh' && (sortConfig.direction === 'desc' ? '高い順' : '低い順')}</span>
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
-        )}
+        </div>
       </header>
 
       {/* Main Content Area */}
@@ -1223,6 +1278,7 @@ export default function App() {
                   isSelectable={isBulkSelectMode}
                   isSelected={selectedSongIds.has(song.id)}
                   onToggleSelect={toggleSongSelection}
+                  compact={isCompactMode}
                 />
               ))}
             </div>
@@ -1292,40 +1348,42 @@ export default function App() {
             )
           )
         )}
-      </main>
+      </main >
 
       {/* Bottom Navigation */}
-      {isBulkSelectMode ? (
-        <div className="fixed bottom-[64px] left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-t border-slate-700 p-4 z-20 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-2 duration-300">
-          <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <div className="text-sm font-bold text-white">
-              {selectedSongIds.size} 曲を選択中
-            </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => {
-                  if (selectedSongIds.size === sortedSongs.length) {
-                    setSelectedSongIds(new Set());
-                  } else {
-                    setSelectedSongIds(new Set(sortedSongs.map(s => s.id)));
-                  }
-                }}
-                className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2 rounded-lg text-sm font-bold transition"
-              >
-                {selectedSongIds.size === sortedSongs.length ? '全選択解除' : 'すべて選択'}
-              </button>
-              <button
-                onClick={() => setIsBulkTagModalOpen(true)}
-                disabled={selectedSongIds.size === 0}
-                className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-900/20 transition flex items-center gap-2"
-              >
-                <Plus size={16} />
-                タグを一括追加
-              </button>
+      {
+        isBulkSelectMode ? (
+          <div className="fixed bottom-[64px] left-0 right-0 bg-slate-800/95 backdrop-blur-sm border-t border-slate-700 p-4 z-20 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] animate-in slide-in-from-bottom-2 duration-300">
+            <div className="max-w-3xl mx-auto flex items-center justify-between">
+              <div className="text-sm font-bold text-white">
+                {selectedSongIds.size} 曲を選択中
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (selectedSongIds.size === sortedSongs.length) {
+                      setSelectedSongIds(new Set());
+                    } else {
+                      setSelectedSongIds(new Set(sortedSongs.map(s => s.id)));
+                    }
+                  }}
+                  className="bg-slate-700 hover:bg-slate-600 text-slate-300 px-4 py-2 rounded-lg text-sm font-bold transition"
+                >
+                  {selectedSongIds.size === sortedSongs.length ? '全選択解除' : 'すべて選択'}
+                </button>
+                <button
+                  onClick={() => setIsBulkTagModalOpen(true)}
+                  disabled={selectedSongIds.size === 0}
+                  className="bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-blue-900/20 transition flex items-center gap-2"
+                >
+                  <Plus size={16} />
+                  タグを一括追加
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      ) : null}
+        ) : null
+      }
 
       <div className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 pb-safe z-20">
         <div className="max-w-3xl mx-auto flex justify-around items-center h-16">
@@ -1455,6 +1513,6 @@ export default function App() {
         onAddTags={handleBulkAddTags}
       />
 
-    </div>
+    </div >
   );
 }
