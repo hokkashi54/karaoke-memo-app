@@ -809,16 +809,28 @@ export default function App() {
   }, [isCompactMode]);
 
   useEffect(() => {
+    let ticking = false;
+
     const handleScroll = () => {
-      const currentScrollY = window.scrollY;
+      if (!ticking) {
+        window.requestAnimationFrame(() => {
+          const currentScrollY = window.scrollY;
 
-      if (currentScrollY > 60 && currentScrollY > lastScrollY) {
-        setIsSearchHidden(true); // Scrolling down
-      } else if (currentScrollY < lastScrollY) {
-        setIsSearchHidden(false); // Scrolling up
+          // Minimum scroll distance to trigger a state change (reduces jitter)
+          const scrollDelta = Math.abs(currentScrollY - lastScrollY);
+
+          if (scrollDelta > 10) {
+            if (currentScrollY > 60 && currentScrollY > lastScrollY) {
+              setIsSearchHidden(true); // Scrolling down
+            } else if (currentScrollY < lastScrollY) {
+              setIsSearchHidden(false); // Scrolling up
+            }
+            setLastScrollY(currentScrollY);
+          }
+          ticking = false;
+        });
+        ticking = true;
       }
-
-      setLastScrollY(currentScrollY);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -1166,8 +1178,8 @@ export default function App() {
         {/* Search & Sort Bar Wrapper */}
         <div
           className={`grid transition-[grid-template-rows,opacity,margin,padding] duration-300 ease-in-out ${isSearchHidden && (activeTab === 'songs' || viewingPlaylist)
-              ? 'grid-rows-[0fr] opacity-0 pointer-events-none'
-              : 'grid-rows-[1fr] opacity-100'
+            ? 'grid-rows-[0fr] opacity-0 pointer-events-none'
+            : 'grid-rows-[1fr] opacity-100'
             }`}
         >
           <div className="overflow-hidden">
