@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Plus, Search, Mic, Music, Trash2, Edit2, X, ChevronDown, ChevronUp, Save, Filter, Mic2, RotateCcw, ListPlus, Loader2, Check, AlertCircle, ListMusic, ArrowLeft, CheckSquare, Square, Library, SlidersHorizontal, Clock, ArrowDownToLine, ArrowUpToLine, LayoutGrid, List } from 'lucide-react';
 
 // --- 定数・ヘルパー関数 ---
@@ -784,7 +784,8 @@ export default function App() {
 
   // Scroll State for Auto-hide Search Bar
   const [isSearchHidden, setIsSearchHidden] = useState(false);
-  const [lastScrollY, setLastScrollY] = useState(0);
+  const lastScrollY = useRef(0);
+  const scrollTimeout = useRef(null);
 
   const [formData, setFormData] = useState({
     title: '', artist: '', key: 0, chestHigh: '', falsettoHigh: '', tags: '', memo: '',
@@ -812,20 +813,48 @@ export default function App() {
     let ticking = false;
 
     const handleScroll = () => {
+      // If a timeout is active, ignore scroll events to prevent bouncing
+      if (scrollTimeout.current) return;
+
       if (!ticking) {
         window.requestAnimationFrame(() => {
           const currentScrollY = window.scrollY;
 
-          // Minimum scroll distance to trigger a state change (reduces jitter)
-          const scrollDelta = Math.abs(currentScrollY - lastScrollY);
+          // Always return to visible when right at the top
+          if (currentScrollY < 10) {
+            setIsSearchHidden(false);
+            lastScrollY.current = currentScrollY;
+            ticking = false;
+            return;
+          }
 
-          if (scrollDelta > 10) {
-            if (currentScrollY > 60 && currentScrollY > lastScrollY) {
-              setIsSearchHidden(true); // Scrolling down
-            } else if (currentScrollY < lastScrollY) {
-              setIsSearchHidden(false); // Scrolling up
-            }
-            setLastScrollY(currentScrollY);
+          const scrollDelta = currentScrollY - lastScrollY.current;
+
+          // Require a smooth continuous scroll delta of at least 15px
+          if (Math.abs(scrollDelta) > 15) {
+            const isScrollingDown = scrollDelta > 0;
+
+            setIsSearchHidden((prevHidden) => {
+              if (isScrollingDown && !prevHidden && currentScrollY > 80) {
+                // Transitioning to hidden
+                scrollTimeout.current = setTimeout(() => {
+                  scrollTimeout.current = null;
+                  lastScrollY.current = window.scrollY;
+                }, 250); // 250ms lockout for 200ms transition
+                return true;
+              } else if (!isScrollingDown && prevHidden) {
+                // Transitioning to visible
+                scrollTimeout.current = setTimeout(() => {
+                  scrollTimeout.current = null;
+                  lastScrollY.current = window.scrollY;
+                }, 250);
+                return false;
+              }
+
+              // No state change, update lastScrollY
+              lastScrollY.current = currentScrollY;
+              return prevHidden;
+            });
           }
           ticking = false;
         });
@@ -834,8 +863,11 @@ export default function App() {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [lastScrollY]);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+    };
+  }, []);
 
   // --- Helper Functions ---
   const getSortedSongs = (sourceSongs) => {
@@ -1106,9 +1138,9 @@ export default function App() {
   // --- Render Contents ---
 
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-24 flex flex-col overscroll-none">
+    <div className="min-h-screen bg-slate-900 text-slate-100 font-sans pb-24 flex flex-col overscroll-none" style={{ overflowAnchor: 'none' }}>
       {/* Header */}
-      <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10 safe-area-pt shadow-md">
+      <header className="bg-slate-800 border-b border-slate-700 sticky top-0 z-10 safe-area-pt shadow-md" style={{ overflowAnchor: 'none' }}>
         <div className="max-w-3xl mx-auto px-4 py-4 flex justify-between items-center">
           {viewingPlaylist ? (
             <div className="flex items-center gap-2">
@@ -1177,7 +1209,7 @@ export default function App() {
 
         {/* Search & Sort Bar Wrapper */}
         <div
-          className={`grid transition-[grid-template-rows,opacity,margin,padding] duration-300 ease-in-out ${isSearchHidden && (activeTab === 'songs' || viewingPlaylist)
+          className={`grid transition-all duration-200 ease-in-out ${isSearchHidden && (activeTab === 'songs' || viewingPlaylist)
             ? 'grid-rows-[0fr] opacity-0 pointer-events-none'
             : 'grid-rows-[1fr] opacity-100'
             }`}
